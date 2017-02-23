@@ -28,6 +28,7 @@ vmlinuz-2.6.18-164.el5
 - cat /etc/passwd
 root:x:0:0:root:/root:/bin/bash
 ```
+
 ## shell variable
 - 지역변수 : name=KIM
 - 환경변수 : export name[=KIM]   : 자식 프로세스에게 복사되어 전달 됨
@@ -35,8 +36,18 @@ root:x:0:0:root:/root:/bin/bash
 
 ## command substitution
 - $()
-- day=`date +%d`  # bourne sh
+- day=\`date +%d\`  # bourne sh
 - month=$(date +%m) # ksh
+
+## 연산 substitution
+- (( 연산 ))
+```
+# x=100
+# y=200
+# (( sum=x+y ))
+# echo $sum
+300
+```
 
 ## Shell의 File Generation 특수 문자
 - \* : zero를 포함한 more character
@@ -51,6 +62,14 @@ OLDPWD=/root
 PWD=/etc/sysconfig/network-scripts
 ```
 
+## Prompt  
+```
+# set | grep ^PS
+PS1='[\u@\h \W]\$ '
+PS2='> '
+PS4='+ '
+```
+
 ## Shell 이 로그인시 실행하는 일련의 스크립트
 1. /etc/profile
 2. ~/.bash_profile : User specific environment and startup programs
@@ -63,6 +82,33 @@ PWD=/etc/sysconfig/network-scripts
 - .bash_profile
 - .bashrc
 - .bash_logout : logout 시 실행하는 스크립트
+
+## shell script 구동 원리
+- 확장자는 의미 없음 : myjob.sh
+- $? : 이전명령 성공 여부
+- 자식 shell 이 구동되며 실행  
+  ```
+  # bash myjob.sh
+  bash --> bash --> 명령들..
+  ```
+- 실행 권한을 허용하려면  
+  ```
+  # mysum.sh
+    -bash: mysum.sh: command not found
+  # ./mysum.sh
+    -bash: ./mysum.sh: 허가 거부됨
+  # chmod 755 myjob.sh
+  ```
+- 명령으로 실행 할때 어떤 쉘인지 알려주려면   
+  ```
+  # vi myjob.sh
+  #! /bin/bash <-- 제일 앞에 쉘 정보 알려줌
+  ```
+- 현재 쉘에서 실행하려면  
+  ```
+  # . .bashrc
+  # source .bashrc
+  ```
 
 ## 리눅스의 종료와 재시작
 1) 종료
@@ -225,6 +271,40 @@ rm .myfile.swp
   user:x:500:
   ```
 
+## 사용자별 공간 할당 - quota
+- 파일시스템마다 사용자나 그룹이 생성할 수 있는 파일의 용량과 개수를 제한하는 것   
+
+```
+1) # rpm -qa|grep quota
+2) # mkdir /userHome
+3) # vi /etc/fstab
+     /dev/sdb1    /userHome    ... defaults,usrquota ...
+   # mount  /userHome
+   혹은
+   # mount -o usrquota /dev/sdb1 /userHome
+   # mount
+      /dev/sdb1 on /userHome type ext3 (rw,usrquota)
+4) 테스트 user 생성
+   # useradd  -d  /userHome/john   john
+   # useradd  -d  /userHome/bann   bann
+   # passwd john
+   # passwd bann
+
+5) # cd /userHome
+   # quotacheck  -aum   (all, user, mount)  <-- quota check 를 위한 db 생성
+
+6) # edquota -u john   <--- Block 크기 or Inode(파일) 개수 제한
+     Disk quotas for user john (uid 507):
+     Filesystem   blocks   soft   hard   inodes   soft   hard
+     /dev/sdb1      40      0      0       10      0      0
+
+7) # quotaon  /userHome   <=>   # quotaoff  /userHome
+
+8) # edquota -p  john  bann
+   # repquota /userHome
+   # quota  bann
+```
+
 ## File 유형
 - \- : file
 - d : directory
@@ -252,7 +332,7 @@ rm .myfile.swp
 - chown username[.groupname] file
 - chgrp groupname file
 - directory : rwx : ls / 파일 생성,삭제 / cd
-
+- umask : 0022 ->  000 010 010  허용하고 싶지 않은 비트 설정  (rw-r--r--)
 ```
 type        u    g    o
 [0000][000][000][000][000]
@@ -278,7 +358,7 @@ drwxrwxrwt 12 root root 4096  2월 21 15:38 /tmp
 ## Switch User
 - su : root는 생략되어 실행
 - su username : 계정만 바꿈, bash 나 PATH 등은 유지
-- su \- username : root 로 로그인 한 것과 동일
+- su \- username : username 으로 로그인 한 것과 동일
 - su -l username : 위와 동일
 - sudo : root의 제한된 명령을 일반 user에게 허용하기 위해.. ()/etc/sudoers)
 
@@ -319,12 +399,12 @@ drwxrwxrwt 12 root root 4096  2월 21 15:38 /tmp
   - inode 번호를 참조 하기 때문에 다른 파일시스템에 있는 파일은 링크 불가
   ```
   # ln /boot/grub/grub.conf mygrub.conf
-  ln: creating hard link `mygrub.conf' to `/boot/grub/grub.conf': 부적절한 장치간 연결
+  ln: creating hard link 'mygrub.conf' to '/boot/grub/grub.conf': 부적절한 장치간 연결
   ```
   - 다렉토리는 링크 불가
   ```
   # ln mydir testdir
-  ln: `mydir': 디렉토리는 하드링크할 수 없습니다
+  ln: 'mydir': 디렉토리는 하드링크할 수 없습니다
   ```
 
 ## 프로그램 설치 명령
@@ -345,9 +425,9 @@ drwxrwxrwt 12 root root 4096  2월 21 15:38 /tmp
   ```
 
 ## Telnet
-- Telent 요청시 프로세스 생성 과정 (pstree 로 확인 가능)
-init -> xinetd (/etc/xinetd.d) -> in.telnetd -> login -> bash
-- telnet-server 설치 방법
+- Telent 요청시 프로세스 생성 과정 (pstree 로 확인 가능)  
+  init -> xinetd (/etc/xinetd.d) -> in.telnetd -> login -> bash
+- telnet-server 설치 방법   
   ```        
   1) # rpm -qa|grep telnet-server  
   2) # yum [-y] install telnet-server  
@@ -365,7 +445,7 @@ init -> xinetd (/etc/xinetd.d) -> in.telnetd -> login -> bash
   ```
 
 ## 파일 묶기
-- tar
+- tar  
   ```
   * 절대결로 사용시 주의! 경로의 맨앞에 / 가 없음.
   생성 : # tar -cvf 파일명 대상목록
@@ -373,34 +453,35 @@ init -> xinetd (/etc/xinetd.d) -> in.telnetd -> login -> bash
   풀기 : # tar -xvf 파일명
   ```
   ```
+  * 압축 해제 및 tar 풀기
+  # tar -xzvf 파일명
   J : tar + xz
   z : tar + gzip
   j : tar + bzip2
-  # tar -xzvf 파일명
   ```
 
 ## 파일 압축
-- zip unzip  : 원본 파일 놔두고 압축
+- zip unzip  : 원본 파일 놔두고 압축  
 ```
 # zip etc.tar.zip etc.tar
 # unzip etc.tar.zip
 ```
-- gzip gunzip : 하드링크 관계, 원본 파일 삭제 후 압축
+- gzip gunzip : 하드링크 관계, 원본 파일 삭제 후 압축  
 ```
 # gzip etc.tar
 # gzip -d etc.tar.gz   # gunzip etc.tar.gz
 ```
-- bzip2 bunzip2 : Symbolic link, 원본 파일 삭제 후 압축
+- bzip2 bunzip2 : Symbolic link, 원본 파일 삭제 후 압축  
 ```
 # bzip2 etc.tar
 # bzip2 -d etc.tar.bz2
 ```
-- xz : 원본 파일 삭제 후 압축
+- xz : 원본 파일 삭제 후 압축  
 ```
 # xz etc.tar
 # xz -d etc.tar.xz
 ```
-- 압축률
+- 압축률  
 ```
 # ll etc*
 -rw-r--r-- 1 root root 13763954  2월 22 13:23 etc.tar.zip
@@ -410,7 +491,7 @@ init -> xinetd (/etc/xinetd.d) -> in.telnetd -> login -> bash
 ```
 
 ## dump & restore
-- dump
+- dump  
   ```
   * Full Backup
   # dump -0uf /tmp/boot.dump /boot # /dev/sda1  
@@ -422,14 +503,14 @@ init -> xinetd (/etc/xinetd.d) -> in.telnetd -> login -> bash
   /dev/sda1 0 Wed Feb 22 13:40:22 2017 +0900
   /dev/sda1 2 Wed Feb 22 13:43:42 2017 +0900
   ```
-- restore
+- restore  
   ```
   # restore -rf /tmp/boot.dump
   # restore -rf /tmp/boot.dump2
   ```
 
 ## 파일 위치 검색
-- find
+- find  
   ```
     find  찾는경로  찾는조건          동작
   # find /home  -name Filename    [-print]
@@ -444,17 +525,17 @@ init -> xinetd (/etc/xinetd.d) -> in.telnetd -> login -> bash
   # find . -name fileA -exec ls -l {} \;
   # find . -name fileA -exec rm {} \;
   ```
-- which : $PATH 에 설정된 디렉터리만 검색
+- which : $PATH 에 설정된 디렉터리만 검색  
   ```
   # which ifconfig
   ```
-- whereis : 실행 파일 및 소스, man 페이지 검색
+- whereis : 실행 파일 및 소스, man 페이지 검색  
   ```
   # whereis ifconfig
   ```
 
 ## Time-Schedule 작업
-- 일회성 작업 : at
+- 일회성 작업 : at  
   ```
   # at now + 3minutes
   at> date > /root/at.out
@@ -470,7 +551,7 @@ init -> xinetd (/etc/xinetd.d) -> in.telnetd -> login -> bash
   /etc/at.deny  : 사용 제한
   /etc/at.allow : 사용 허용
   ```
-- 반복적인 작업 : crontab
+- 반복적인 작업 : crontab  
   ```
   crond 실행되면서 /etc/crontab 참조
   분 시 일 월 요일 사용자 실행명령
@@ -491,11 +572,11 @@ init -> xinetd (/etc/xinetd.d) -> in.telnetd -> login -> bash
 ## 네트워크
 - 장치 정보 : ifconfig eth0
 - ifup eth0 / ifdown eth0
-- root 만 접근가능 하도록 설정
+- root 만 접근가능 하도록 설정  
   ```
   # touch /etc/nologin
   ```
-- IP 고정하기
+- IP 고정하기  
   ```
   # cat /etc/sysconfig/network-scripts/ifcfg-eth0
   # Advanced Micro Devices [AMD] 79c970 [PCnet32 LANCE]
@@ -508,7 +589,7 @@ init -> xinetd (/etc/xinetd.d) -> in.telnetd -> login -> bash
   # system-config-network
   # service network restart
   ```
-- nslookup : DNS test
+- nslookup : DNS test  
   ```
   # nslookup
   > server
@@ -546,17 +627,17 @@ init -> xinetd (/etc/xinetd.d) -> in.telnetd -> login -> bash
 - sed
 
 ## 리다이렉션
-- 입출력 방향 변경
-- stdin 변경  
+- 입출력 방향 변경  
+- stdin 변경   
   ```
   $ 명령 < 파일
   ```
-- stdout 변경
+- stdout 변경  
   ```
   $ 명령 > 파일     overwrite  
   $ 명령 >> 파일    append                
   ```
-- stderr 변경
+- stderr 변경  
   ```
   $ 명령 2>파일  
   $ 명령 2> /dev/null
@@ -569,14 +650,14 @@ init -> xinetd (/etc/xinetd.d) -> in.telnetd -> login -> bash
 - 포그라운드 프로세스 : $ sleep 100
 - 백그라운드 프로세스 : $ sleep 100 &
 - 좀비 프로세스 : $ ps -e | grep defunct
-- 고아 프로세스 : 백그라운드 프로세스 종료전에 부모 프로세스가 종료된 경우
+- 고아 프로세스 : 백그라운드 프로세스 종료전에 부모 프로세스가 종료된 경우  
   ```
   # ps -ef | grep sleep
   root      7926     1  0 16:12 ?        00:00:00 sleep 1000
   root      7948     1  0 16:17 ?        00:00:00 sleep 2000
   PPID : 1,  TTY : ? 로 변경 됨
   ```
-- 작업 : 쉘에서 실행시킨 프로세스
+- 작업 : 쉘에서 실행시킨 프로세스  
   ```
   # sleep 1000 &
   [1] 8018
@@ -595,7 +676,7 @@ init -> xinetd (/etc/xinetd.d) -> in.telnetd -> login -> bash
   [1]-  Running                 sleep 1000 &
   [2]+  Running                 sleep 1000 &
   ```
-- 종료
+- 종료  
   ```
   # kill 8018  <- pid
   # kill %2    <- job number
@@ -610,20 +691,187 @@ init -> xinetd (/etc/xinetd.d) -> in.telnetd -> login -> bash
 - 시스템과 독자적으로 구동되어 제공되는 프로세스
 
 ## 하드디스크 추가하기
-** 하드디스크 추가하기
+- fdisk : 파티션 나누기   
+  ```
+  # fdisk  /dev/sdb
+        n -> p -> 1 -> enter -> enter -> p -> w
+  # fdisk -l /dev/sdb
+    Disk /dev/sdb: 1073 MB, 1073741824 bytes
+    255 heads, 63 sectors/track, 130 cylinders
+    Units = cylinders of 16065 * 512 = 8225280 bytes
+
+       Device Boot      Start         End      Blocks   Id  System
+    /dev/sdb1               1         130     1044193+  83  Linux
+  ```     
+- mkfs : 파일시스템 생성  
+  ```
+  # mkfs -t ext3 /dev/sdb1
+    mke2fs 1.39 (29-May-2006)
+    Filesystem label=
+    OS type: Linux
+    Block size=4096 (log=2)
+    Fragment size=4096 (log=2)
+    130560 inodes, 261048 blocks
+    13052 blocks (5.00%) reserved for the super user
+    First data block=0
+    Maximum filesystem blocks=268435456
+    8 block groups
+    32768 blocks per group, 32768 fragments per group
+    16320 inodes per group
+    Superblock backups stored on blocks:
+            32768, 98304, 163840, 229376
+
+    Writing inode tables: done
+    Creating journal (4096 blocks): done
+    Writing superblocks and filesystem accounting information: done
+
+    This filesystem will be automatically checked every 24 mounts or
+    180 days, whichever comes first.  Use tune2fs -c or -i to override.
+  ```
+- mount  
+  ```
+  # mkdir  /mydata
+  # mount  /dev/sdb1  /mydata
+  # ls /mydata
+    lost+found
+  # mount
+    /dev/sdb1 on /mydata type ext3 (rw)
+  ```
+- /etc/fstab : 시스템 시작시 자동으로 마운트 되도록 설정  
+  ```
+  # blkid /dev/sda3
+    /dev/sda3: LABEL="/" UUID="22bf335b-fc20-4c8b-8694-760499058928" TYPE="ext3" SEC_TYPE="ext2"
+  # e2label /dev/sdb1 /mydata
+  # vi /etc/fstab
+    장치명[LABEL, UUID]  마운트될디렉토리    FS타입   속성       덤프사용여부    파일시스템체크여부
+    /dev/sdb1           /mydata            ext3     defaults        1             1
+  ```
+
+## RAID
 ```
-1)  # ll /dev/sd*
-2)  # fdisk  /dev/sdb
-      n -> p -> 1 -> enter -> enter -> p -> w
-    # ll  /dev/sd*
-3)  # mkfs.ext3  /dev/sdb1  혹은
-    # mkfs  -t ext3  /dev/sdb1
-4)  # mkdir  /mydata
-5)  # mount  /dev/sdb1  /mydata
-    # df 혹은 mount -v
-6)  # vi /etc/fstab 에 추가
-/dev/sdb1    /mydata    ext3    defaults  1   1
+실습 환경
+scsi |------[sda]--[sdb]--[sdc]--[sdd]--[sde]--[sdf]--[sdg]
+boot          |--raid 0--|  |--raid 1--|<--복구
+```  
+- Linear RAID : 1번 하드디스크가 모두 채워진 뒤 2번째 하드디스크를 사용
+- RAID 0(Stripping) : 여러 하드디스크에 동시에 저장. 저장성능 효츌적. 데이터 안전성 보장 못함  
+  ```
+   	1) # fdisk  /dev/sdc
+  	   n ->  p  ->  1  -> enter  -> enter  -> t  -> L -> fd  -> p  -> w
+  	2) # fdisk  /dev/sdd
+  	   위와 동일
+  	3) # ll /dev/md*
+                장치명     타입    메이져  마이너
+    	 # mknod  /dev/md0   b      9       0
+         - 매이져: /proc/devices 확인 가능
+         - 마이너: 하드웨어의 위치정보 ll /dev/sd*
+  	4) # mdadm  --create   /dev/md0    \
+                --level=0   \
+                --raid-devices=2  /dev/sdc1  /dev/sdd1
+  	   # mdadm --detail --scan
+  	    혹은
+  	   # mdadm -D -s
+  	5) # mkfs.ext3  /dev/md0
+  	6) # mkdir  /raid0
+  	   # mount  /dev/md0  /raid0
+  	7) # df => 용량확인
+   	   # cp /bin/c*   /raid0
+  	8) # vi /etc/fstab
+  	     /dev/md0   /raid0   ext3   defaults  1  1
+  	   # umount /raid0
+  	   # mount /raid0
+  	9) # halt
+    ============>  disk 제거후 재시작  
+  	1) # vi /etc/fstab 에서 해당정보 제거  <-- 복구모드에서는 readonly mode 로 마운트 됨
+  	2) # mount -o remount /              <-- rw 모드로 다시 마운트 되도록 설정
+  	   # vi /etc/fstab
+  	3) # reboot
+  ```  
+- RAID 1(미러링) : 여러 하드디스크에 중복 저장, 데이터 안전성 보장됨  
+  ```
+  1) # fdisk  /dev/sdd
+     n ->  p  ->  1  -> enter  -> enter  -> t  -> L -> fd  -> p  -> w
+  2) # fdisk  /dev/sde
+     위와 동일
+  3) # mdadm  --create   /dev/md1  \
+              --level=1    \
+              --raid-devices=2  /dev/sdd1  /dev/sde1
+     # mdadm -D /dev/md1
+  4) # mkfs.ext3  /dev/md1
+  5) # mkdir  /raid1
+     # mount  /dev/md1  /raid1
+  6) # df => 용량이 1/2
+     # cp /bin/d*   /raid1
+  7) # vi /etc/fstab
+       /dev/md1   /raid1   ext3   defaults  1  1
+     # umount /raid1
+     # mount /raid1
+  8) # halt
+  ============> disk 제거후 재시작
+  1) 확인
+     # ll /dev/sd*
+     # df
+     # ll /raid1
+     # mdadm -D  /dev/md1
+     Number   Major   Minor   RaidDevice State
+       0       8       49        0      active sync   /dev/sdd1
+       1       0        0        1      removed
+  2) # fdisk  /dev/sde
+      n ->  p  ->  1  ->  enter  ->  enter  -> t  -> fd  ->  p  -> w
+  3) # mdadm  /dev/md1  --add  /dev/sde1 ; mdadm -D /dev/md1
+     Number   Major   Minor   RaidDevice State
+       0       8       49        0      active sync   /dev/sdd1
+       2       8       65        1      spare rebuilding   /dev/sde1
+     # mdadm -D /dev/md1
+    Number   Major   Minor   RaidDevice State
+       0       8       49        0      active sync   /dev/sdd1
+       1       8       65        1      active sync   /dev/sde1
+     # fdisk  -l
+  ```   
+- RAID 5 : 하드디스크 최소 3개 이상 필요. 패리트비트 사용. (0+0+0+pairity= 짝수). 공간효율 결함 허용. N-1 만큼 공간 사용  
+
+## LVM (Logical Volume Manager)
+- 여러개의 하드디스크를 합쳐서 한개의 파티션으로 구성 후 필요에 따라 여러 파티션으로 구성 가능  
+- PV: Physical Volume   
+- VG: Volume Group   
+- LV: Logical Volume  
+- PE: Physical Extent  
+- LE: Logical Extent
 ```
+  PV            VG           LV
+[ 20G ]                    [ 30G ]
+          =>  [ 40G ]  =>
+[ 20G ]                    [ 10G ]
+```
+- pvcreate PV
+- vgcreate [-s size] VGName PVPath
+- lvcreate [-L size] [-n lvname] VGName
+- pvdisplay / vgdisplay / lvdisplay  -m
+- lvextend  <--> lvreduce
+- vgextend  <--> vgreduce  
+- 실습  
+  ```
+  1) # fdisk /dev/sdc
+     # fdisk  /dev/sdd
+      n ->  p  ->  1  ->  enter  ->  enter  ->  t  -> L  -> 8e -> p -> w
+
+  2) # pvcreate [-f] /dev/sdc1  /dev/sdd1
+     # pvdisplay
+
+  3) # vgcreate myVG  /dev/sdc1  /dev/sdd1
+     # vgdisplay  -v  myVG
+
+  4) # lvcreate --size 500m  --name myLG1  myVG
+     # lvcreate --size 800m  --name myLG2  myVG
+
+  5) # mkfs -t ext3  /dev/myVG/myLG1
+     # mkfs -t ext3  /dev/myVG/myLG2
+
+  6) # mkdir /lvm1
+     # mkdir /lvm2
+     # mount /dev/myVG/myLG1  /lvm1
+     # mount /dev/myVG/myLG2  /lvm2
+  ```
 
 ## Command
 ```
@@ -667,3 +915,4 @@ shutdown: you must be root to do that!
 - eject : 언마운트 + 장치 제거
 - pstree : 프로세스 부모 자식 관계 보기
 - stty -a : 터미널 시그널 확인
+- blkid /dev/sda3 : 블럭 ID
