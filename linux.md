@@ -1,3 +1,12 @@
+# Linux System Administration
+
+## 실습 환경
+- CentOS 5.4
+- kernel 2.6.18
+- vmware player
+- \*.100 : FTP, DNS
+- \*.200 : Web
+
 ## VMWare deault Network
 - host PC : 192.168.xxx.1
 - Router : 192.168.xxx.2
@@ -10,6 +19,29 @@
 - client 설정 : /etc/ssh/ssh_config
 - server 설정 : /etc/ssh/sshd_config
 - ssh / sshd
+
+## SSH의 보안강화 자동로그인
+- Server  
+  ```
+  # ll .ssh/
+  -rw-r--r-- 1 root root 397  2월 23 17:15 known_hosts
+  ```
+- Client
+  ```
+  # ssh-keygen  -t dsa   <-- key pair 생성
+  # ll .ssh
+    -rw-------. 1 root root 736 2017-02-23 17:12 id_dsa       <-- private key
+    -rw-r--r--. 1 root root 616 2017-02-23 17:12 id_dsa.pub   <-- public key
+  # scp  ~/.ssh/id_dsa.pub  {server_ip}:~/.ssh/authorized_keys
+  # eval $(ssh-agent)
+  # ssh-add
+
+  # vi .bash_profile
+    eval $(ssh-agent)
+    ssh-add
+  # vi .bash_logout
+    kill $SSH_AGENT_PID
+  ```
 
 ## kernel 확인
 ```
@@ -332,13 +364,14 @@ rm .myfile.swp
 - chown username[.groupname] file
 - chgrp groupname file
 - directory : rwx : ls / 파일 생성,삭제 / cd
-- umask : 0022 ->  000 010 010  허용하고 싶지 않은 비트 설정  (rw-r--r--)
+- umask : 0022 ->  000 010 010  허용하고 싶지 않은 비트 설정  (rw-r--r--)  
+
 ```
 type        u    g    o
 [0000][000][000][000][000]
        set user id bit  : rws : owner uid 권한으로 실행 가능
        set group id bit : rws : owner gid 권한으로 실행 가능
-       sticky bit       : rwt : swap 공간에 남아 있음. root 만 설정 가능
+       sticky bit       : rwt : swap 공간에 남아 있음. root 만 설정 가능  
 
 $ ll /usr/bin/chsh
 -rws--x--x 1 root root 19096  9월  4  2009 /usr/bin/chsh
@@ -360,7 +393,7 @@ drwxrwxrwt 12 root root 4096  2월 21 15:38 /tmp
 - su username : 계정만 바꿈, bash 나 PATH 등은 유지
 - su \- username : username 으로 로그인 한 것과 동일
 - su -l username : 위와 동일
-- sudo : root의 제한된 명령을 일반 user에게 허용하기 위해.. ()/etc/sudoers)
+- sudo : root의 제한된 명령을 일반 user에게 허용하기 위해.. (/etc/sudoers)
 
 ## 링크
 - ls -i : inode 번호 까지
@@ -568,51 +601,6 @@ drwxrwxrwt 12 root root 4096  2월 21 15:38 /tmp
     45-47 14 * * 3 date >> /root/cron.out
   # crontab -r  : 삭제
   ```
-
-## 네트워크
-- 장치 정보 : ifconfig eth0
-- ifup eth0 / ifdown eth0
-- root 만 접근가능 하도록 설정  
-  ```
-  # touch /etc/nologin
-  ```
-- IP 고정하기  
-  ```
-  # cat /etc/sysconfig/network-scripts/ifcfg-eth0
-  # Advanced Micro Devices [AMD] 79c970 [PCnet32 LANCE]
-  DEVICE=eth0
-  BOOTPROTO=dhcp
-  ONBOOT=yes
-  HWADDR=00:0c:29:7c:ca:a6
-  ```
-  ```
-  # system-config-network
-  # service network restart
-  ```
-- nslookup : DNS test  
-  ```
-  # nslookup
-  > server
-  Default server: 192.168.214.2
-  Address: 192.168.214.2#53
-
-  > www.naver.com
-  Server:         192.168.214.2
-  Address:        192.168.214.2#53
-
-  Non-authoritative answer:
-  www.naver.com   canonical name = www.naver.com.nheos.com.
-  Name:   www.naver.com.nheos.com
-  Address: 125.209.222.141
-  Name:   www.naver.com.nheos.com
-  Address: 125.209.222.142
-  > exit
-  ```
-- /etc/sysconfig/network : hostname 설정
-- /etc/sysconfig/network-scripts/ifcfg-eth0 : 네트워크 정보
-- /etc/nsswitch.conf :  정책  > hosts:  files dns
-- /etc/hosts :
-- /etc/resolv.con : DNS 서버 정보
 
 ## 파이프
 - ls | more
@@ -873,6 +861,294 @@ boot          |--raid 0--|  |--raid 1--|<--복구
      # mount /dev/myVG/myLG2  /lvm2
   ```
 
+## 네트워크
+  - 장치 정보 : ifconfig eth0
+  - ifup eth0 / ifdown eth0
+  - root 만 접근가능 하도록 설정  
+    ```
+    # touch /etc/nologin
+    ```
+  - IP 고정하기  
+    ```
+    # cat /etc/sysconfig/network-scripts/ifcfg-eth0
+    # Advanced Micro Devices [AMD] 79c970 [PCnet32 LANCE]
+    DEVICE=eth0
+    BOOTPROTO=dhcp
+    ONBOOT=yes
+    HWADDR=00:0c:29:7c:ca:a6
+    ```
+    ```
+    # system-config-network
+    # service network restart
+    ```
+  - nslookup : DNS test  
+    ```
+    # nslookup
+    > server
+    Default server: 192.168.214.2
+    Address: 192.168.214.2#53
+
+    > www.naver.com
+    Server:         192.168.214.2
+    Address:        192.168.214.2#53
+
+    Non-authoritative answer:
+    www.naver.com   canonical name = www.naver.com.nheos.com.
+    Name:   www.naver.com.nheos.com
+    Address: 125.209.222.141
+    Name:   www.naver.com.nheos.com
+    Address: 125.209.222.142
+    > exit
+    ```
+  - /etc/sysconfig/network : hostname 설정
+  - /etc/sysconfig/network-scripts/ifcfg-eth0 : 네트워크 정보
+  - /etc/nsswitch.conf :  정책  > hosts:  files dns
+  - /etc/hosts :
+  - /etc/resolv.con : DNS 서버 정보
+
+## DNS(Domain Name System) 서버 : \#53
+- 캐싱 전용 네임 서버 : URL의 IP 주소를 알려주는 네임 서버  
+  ```
+  # yum install caching-nameserver
+  # vi /etc/named.caching-nameserver.conf   <-- 상위 버전에서는 /etc/named.conf
+    127.0.0.1  -> any
+    localhost  -> any
+  # named-checkconf /etc/named.caching-nameserver.conf
+  # service named start
+  # nslookup    <-- nameserver 테스트
+  > server 192.168.214.100        
+  Default server: 192.168.214.100
+  Address: 192.168.214.100#53
+  > www.naver.com
+  ...
+
+  # vi /etc/resolv.conf
+  nameserver 192.168.214.100
+
+  # chkconfig --list named
+  # chkconfig --level 235 named on
+  ```  
+- 마스터 네임 서버 : 도메인에 속한 컴퓨터들의 이름을 관리하고, 외부에서 해당 컴퓨터 IP주소를 알기 원할 때 알려주는 네임 서버
+  ```
+  # vi /etc/named.rfc1912.zones   <-- 상위 버전에서는 /etc/named.conf 에 같이 관리
+    zone "test.com" IN {
+        type master;
+        file "test.com.db";
+        allow-update { none; };
+    };
+
+  # vi /var/named/chroot/var/named/test.com.db
+    $TTL    3H
+    @       SOA @   root. ( 2 1D 1H 1W 1H )
+            IN  NS  @
+            IN  A   192.168.214.100
+    www     IN  A   192.168.214.200
+    ftp     IN  A   192.168.214.100
+    blog    IN  A   192.168.214.150
+    ==> TTL : time to live
+        @ : zone name       
+
+  # named-checkzone  test.com  /var/named/chroot/var/named/test.com.db
+    zone test.com/IN: loaded serial 2
+    OK
+
+  # service named restart
+  ```
+
+## FTP 서버구축 : vsftpd
+- 설치 여부 확인  
+  ```
+  # rpm -qa|grep vsftpd
+  ```
+- 설치  
+  ```
+  # yum install vsftpd`
+  # service  vsftpd  start [ stop, start, restart, status ]
+  # netstat -a|grep ftp
+  ```
+- 부팅시 자동으로 실행되도록 설정  
+  ```
+  # chkconfig --list vsftpd
+    vsftpd          0:해제  1:해제  2:해제  3:해제  4:해제  5:해제  6:해제   <-- run level
+  # chkconfig --level 235 vsftpd on    
+  # ll /etc/rc2.d/S*vsftp*
+    lrwxrwxrwx 1 root root 16  2월 24 10:23 /etc/rc2.d/S60vsftpd -> ../init.d/vsftpd
+  # chkconfig --level 2 vsftpd off     <-- 링크 삭제
+  # ll /etc/rc2.d/K*vsftp*
+    lrwxrwxrwx 1 root root 16  2월 24 10:26 /etc/rc2.d/K50vsftpd -> ../init.d/vsftpd
+  ```
+- 연결시도후 실패할 경우 방화벽 확인  
+  ```
+   # system-config-securitylevel  or system-config-firewall
+   # iptables -F
+  ```
+- root로도 연결하려면  
+  ```
+  * root 주석처리
+  /etc/vsftpd/ftpusers    <-- not allowed to login
+  /etc/vsftpd/user_list   <-- denied user
+  ```
+- Anonymous User 연결  
+  ```
+  # grep ^ftp /etc/passwd
+    ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+  # cd /var/ftp  <-- ftp의 home directory
+  # ls -l
+    drwxr-xr-x 2 root root 4096  9월  4  2009 pub
+
+  # vi /etc/vsftpd/vsftpd.conf
+    anon_upload_enable=YES    <-- upload 허용
+  # chmod 777 /var/ftp/pub  or   chown ftp.ftp /var/ftp/pub
+  ```
+- xinetd 형태로 설치  
+  ```
+  # service vsftpd stop
+	# vi /etc/vsftpd/vsftpd.conf
+		listen=NO
+	# cp /usr/share/doc/vsftpd2.x.x/vsftpd.xinetd
+		/etc/xinetd.d/vsftpd
+	# vi /etc/xinetd.d/vsftpd
+		disable=no
+	# service xinetd restart
+  ```
+
+## SELinux
+- network의 application level의 보안 정책    
+
+```
+# getenforce
+  Enforcing
+# getsebool -a | grep ftp
+  allow_ftpd_anon_write --> off
+  allow_ftpd_full_access --> off
+  allow_ftpd_use_cifs --> off
+  allow_ftpd_use_nfs --> off
+  ftp_home_dir --> off
+  ftpd_connect_db --> off
+  ftpd_use_fusefs --> off
+  ftpd_use_passive_mode --> off
+  httpd_enable_ftp_server --> off
+  tftp_anon_write --> off
+  tftp_use_cifs --> off
+  tftp_use_nfs --> off
+# setsebool -P allow_ftpd_full_access 1
+
+# vi /etc/sysconfig/seLinux
+# setenforce 0
+# getenforce
+  Permissive
+```
+
+## NFS (Network File System) 서버
+- NFS server : 최소 runlevel 3
+  ```
+  # rpm -qa | grep nfs-utils
+  # vi /etc/exports
+    /share  192.168.214.*(rw,sync)   # (rw,sync,no_root_squash)
+  # mkdir /share
+  # chmod 707 /share
+  # service nfs start
+  # exportfs -v
+    /share  192.168.214.*(rw,wdelay,root_squash,no_subtree_check,anonuid=65534,anongid=65534)
+  ```
+    - nfs는 rpc를 사용하는데.. rpc는 고정된 port가 아니기 때문에, 중재자(111 포트)가 필요  
+    ```
+    # ps -e|grep port  or  rpcbind  
+    # rpcinfo -p
+      프로그램 버전 원형   포트
+      100000    2   tcp    111  portmapper
+    ```
+- client  
+  ```
+  # showmount -e 192.168.214.100
+    Export list for 192.168.214.100:
+    /share 192.168.214.*
+  # mkdir /myShare
+  # mount -t nfs 192.168.214.100:/share /myShare
+  # df
+  192.168.214.100:/share  11165408 4216736   6372352  40% /myShare
+
+  - root 계정으로 파일을 생성시 NFS 서버 설정에 따라 계정이 다르게 보임
+  -rw-r--r--. 1 nfsnobody nfsnobody    0 2017-02-24 15:04 rootfile    <-- root_squash
+  -rw-r--r--. 1 root      root         0 2017-02-24 15:06 rootfile2   <-- no_root_squash
+  ```
+
+## NTP (Network Time Protocol)
+- Stratum 1~15 계층 구조로 시간을 맞출 수 있음
+- 설치
+  ```
+  # rpm -qa|grep ntp
+  # yum install ntp
+  ```
+- 서버 (CentOS5)
+  ```
+  # vi /etc/ntp.conf
+  	server 127.127.1.0  # local clock
+  	fudge  127.127.1.0  stratum 10
+  # service ntpd start
+  # chkconfig --level 35 ntpd on
+  # ntpq -p
+    remote           refid      st t when poll reach   delay   offset  jitter
+  ==============================================================================
+  *LOCAL(0)        .LOCL.          10 l   27   64  377    0.000    0.000   0.001
+  ```
+- 클라이언트 (CentOS6)
+  ```
+  # vi /etc/ntp.conf
+  	server 192.168.214.100
+  # service ntpd start
+  # chkconfig --level 35 ntpd on
+  # ntpq -p     <== stratum 16 으로 아직 맞춰지지 않았음
+    remote           refid      st t when poll reach   delay   offset  jitter
+  ==============================================================================
+  192.168.214.100 .INIT.          16 u   37   64    0    0.000    0.000   0.000
+  # ntpq -p     <== stratum 11 (server st == 10)
+    remote           refid      st t when poll reach   delay   offset  jitter
+  ==============================================================================
+  *192.168.214.100 LOCAL(0)        11 u    1   64    1    0.646    0.025   0.000
+  ```
+
+## autofs
+- NFS client service
+```
+# rpm -qa | grep autofs
+# ps -e | grep auto
+ 1745 ?        00:00:00 automount
+# lsmod | grep auto
+ autofs4                21076  3
+
+# vi /etc/auto.master
+  /net    -hosts          : /net 아래에서 호스트명으로 접속(cd)시 자동 마운트
+  /misc   /etc/auto.misc  : auto.misc 에 설정된 정보로 자동 마운트
+# vi /etc/auto.misc
+  data            -fstype=nfs             192.168.214.100:/share
+
+# cd /net/192.168.214.100/share  
+# cd /misc/data
+```
+
+## Samba
+- Unix 계열, Windows 계열 모두 가능
+- 윈도우 : 공유 폴더
+```
+# rpm -qa|grep samba
+# smbclient -L 192.168.214.1/smbShare -U linuxuser
+  Domain=[M13054] OS=[Windows 7 Enterprise 7601 Service Pack 1] Server=[Windows 7 Enterprise 6.1]
+
+          Sharename       Type      Comment
+          ---------       ----      -------
+          ADMIN$          Disk      원격 관리
+          C$              Disk      기본 공유
+          IPC$            IPC       원격 IPC
+          samShare        Disk
+  session request to 192.168.214.1 failed (Called name not present)
+  session request to 192 failed (Called name not present)
+  session request to *SMBSERVER failed (Called name not present)
+  NetBIOS over TCP disabled -- no workgroup available
+
+# mount -t cifs //192.168.214.1/smbShare  /sambaMount -o username=linuxuser
+```
+
 ## Command
 ```
 - 일반명령 : /bin/  or /usr/bin
@@ -916,3 +1192,5 @@ shutdown: you must be root to do that!
 - pstree : 프로세스 부모 자식 관계 보기
 - stty -a : 터미널 시그널 확인
 - blkid /dev/sda3 : 블럭 ID
+- scp src dest : 리모트 복사
+- lsmod : 커널 모듈 확인
